@@ -11,11 +11,6 @@ resource "helm_release" "cert_manager" {
     value = "true"
   }
 
-  set {
-    name  = "installCRDs"
-    value = "true"
-  }
-
   wait = true
   timeout = 300
 }

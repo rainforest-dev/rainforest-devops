@@ -71,54 +71,28 @@ resource "vault_auth_backend" "kubernetes" {
   depends_on = [helm_release.vault]
 }
 
-resource "vault_kubernetes_auth_backend_config" "kubernetes" {
-  backend                = vault_auth_backend.kubernetes.path
-  kubernetes_host        = "https://kubernetes.default.svc:443"
-  kubernetes_ca_cert     = base64decode(data.kubernetes_secret.vault_token.data["ca.crt"])
-  token_reviewer_jwt     = data.kubernetes_secret.vault_token.data.token
-  issuer                 = "https://kubernetes.default.svc.cluster.local"
-  disable_iss_validation = true
-}
+# Kubernetes auth configuration will be done post-deployment
+# resource "vault_kubernetes_auth_backend_config" "kubernetes" {
+#   backend                = vault_auth_backend.kubernetes.path
+#   kubernetes_host        = "https://kubernetes.default.svc:443"
+#   kubernetes_ca_cert     = base64decode(data.kubernetes_secret_v1.vault_token.data["ca.crt"])
+#   token_reviewer_jwt     = data.kubernetes_secret_v1.vault_token.data.token
+#   issuer                 = "https://kubernetes.default.svc.cluster.local"
+#   disable_iss_validation = true
+# }
 
-resource "vault_kubernetes_auth_backend_role" "github_runners" {
-  backend                          = vault_auth_backend.kubernetes.path
-  role_name                        = "github-runners"
-  bound_service_account_names      = ["actions-runner-controller"]
-  bound_service_account_namespaces = ["actions-runner-system"]
-  token_ttl                        = 3600
-  token_policies                   = ["github-secrets"]
-}
+# Auth role configuration will be done post-deployment
+# resource "vault_kubernetes_auth_backend_role" "github_runners" {
+#   backend                          = vault_auth_backend.kubernetes.path
+#   role_name                        = "github-runners"
+#   bound_service_account_names      = ["actions-runner-controller"]
+#   bound_service_account_namespaces = ["actions-runner-system"]
+#   token_ttl                        = 3600
+#   token_policies                   = ["github-secrets"]
+# }
 
-# Service account for vault
-resource "kubernetes_service_account" "vault" {
-  metadata {
-    name      = "vault"
-    namespace = kubernetes_namespace.vault.metadata[0].name
-  }
-}
-
-resource "kubernetes_cluster_role_binding" "vault_auth_delegator" {
-  metadata {
-    name = "vault-auth-delegator"
-  }
-  role_ref {
-    api_group = "rbac.authorization.k8s.io"
-    kind      = "ClusterRole"
-    name      = "system:auth-delegator"
-  }
-  subject {
-    kind      = "ServiceAccount"
-    name      = kubernetes_service_account.vault.metadata[0].name
-    namespace = kubernetes_service_account.vault.metadata[0].namespace
-  }
-}
-
-data "kubernetes_secret" "vault_token" {
-  metadata {
-    name      = kubernetes_service_account.vault.default_secret_name
-    namespace = kubernetes_namespace.vault.metadata[0].name
-  }
-}
+# Note: Service account is created by Helm chart
+# We'll configure Kubernetes auth after Vault is running
 
 # GitHub PAT secret
 resource "vault_kv_secret_v2" "github_pat" {
