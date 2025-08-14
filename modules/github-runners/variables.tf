@@ -48,3 +48,9 @@ variable "namespace" {
   default     = "github-runners"
 }
 
+variable "github_token" {
+  description = "GitHub Personal Access Token"
+  type        = string
+  sensitive   = true
+}
+

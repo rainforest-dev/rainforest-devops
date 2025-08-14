@@ -12,10 +12,6 @@ terraform {
       version = "~> 2.11"
     }
     
-    vault = {
-      source  = "hashicorp/vault"
-      version = "~> 3.20"
-    }
   }
   
   backend "local" {
@@ -33,18 +29,6 @@ provider "helm" {
   }
 }
 
-provider "vault" {
-  address = "http://vault.vault.svc.cluster.local:8200"
-  token   = var.vault_dev_token
-}
-
-module "vault" {
-  source = "../modules/vault"
-  
-  github_token = var.github_token
-  vault_root_token = var.vault_dev_token
-}
-
 module "cert_manager" {
   source = "../modules/cert-manager"
 }
@@ -52,7 +36,7 @@ module "cert_manager" {
 module "actions_runner_controller" {
   source = "../modules/actions-runner-controller"
   
-  depends_on = [module.vault, module.cert_manager]
+  depends_on = [module.cert_manager]
   
   github_token = var.github_token
 }

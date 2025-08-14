@@ -3,10 +3,3 @@ variable "github_token" {
   type        = string
   sensitive   = true
 }
-
-variable "vault_dev_token" {
-  description = "Vault development root token"
-  type        = string
-  default     = "dev-root-token-change-me"
-  sensitive   = true
-}

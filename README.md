@@ -1,6 +1,6 @@
 # GitHub Actions Runner Controller on Kubernetes
 
-A production-ready, two-stage Terraform deployment for GitHub Actions self-hosted runners with HashiCorp Vault secret management.
+A production-ready, two-stage Terraform deployment for GitHub Actions self-hosted runners using the official GitHub Actions Runner Controller.
 
 ## 🏗️ Architecture
 
@@ -9,56 +9,56 @@ A production-ready, two-stage Terraform deployment for GitHub Actions self-hoste
 │  Stage 1        │    │  Stage 2           │
 │  Infrastructure │ -> │  GitHub Runners    │
 │                 │    │                    │
-│ • Vault         │    │ • RunnerDeployment │
-│ • Cert-Manager  │    │ • Autoscaling      │
-│ • ARC Controller│    │ • Organization      │
+│ • Cert-Manager  │    │ • RunnerScaleSets  │
+│ • ARC Controller│    │ • Auto-scaling     │
+│ • GitHub Secret │    │ • Organization     │
 └─────────────────┘    └─────────────────────┘
 ```
 
 **Benefits:**
-- 🔐 **Secure**: GitHub PAT stored in Vault
-- 📈 **Auto-scaling**: Runners scale based on workflow queue
+- 🔐 **Secure**: GitHub PAT stored in Kubernetes secrets
+- 📈 **Auto-scaling**: Runners scale based on workflow demand
 - 🔄 **Reliable**: Two-stage deployment prevents race conditions
-- 🛠️ **Production-ready**: Proper resource limits and monitoring
+- 🛠️ **Production-ready**: Official GitHub ARC with proper resource limits
+- ⚡ **Modern**: Uses latest RunnerScaleSet architecture
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Kubernetes cluster with kubectl configured
 - Terraform >= 1.0
-- Helm >= 3.0
 - GitHub Personal Access Token
 
 ### Step 1: Create GitHub PAT
-1. Go to GitHub → Settings → Developer settings → Personal access tokens
-2. Create **Fine-grained token** with:
-   - **Actions**: Read and Write
-   - **Administration**: Write
-   - **Metadata**: Read
+1. Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+2. Create token with scopes:
+   - **repo** (Full control of private repositories)
+   - **admin:org** (Full control of orgs and teams, read and write org projects)
 
-### Step 2: Deploy Infrastructure
+### Step 2: Configure Runners
 ```bash
-cd 1-infrastructure
-
-# Create local config (git-ignored)
-cp terraform.tfvars.example terraform.tfvars.local
-vim terraform.tfvars.local  # Add your GitHub PAT
-
-# Deploy
-terraform init
-terraform apply
+# Configure your organization/repositories
+vim 2-runners/terraform.tfvars
+# Set: github_organizations = ["your-org"]
 ```
 
-### Step 3: Deploy Runners
+### Step 3: Deploy (Automated)
 ```bash
+# One-command deployment
+export TF_VAR_github_token="github_pat_your_token_here"
+./scripts/deploy.sh --auto-approve
+```
+
+### Alternative: Manual Deployment
+```bash
+# Stage 1: Infrastructure
+cd 1-infrastructure
+export TF_VAR_github_token="github_pat_your_token_here"
+terraform init && terraform apply
+
+# Stage 2: Runners
 cd ../2-runners
-
-# Update configuration
-vim terraform.tfvars  # Configure your org/repos
-
-# Deploy
-terraform init
-terraform apply
+terraform init && terraform apply
 ```
 
 ## 📁 Project Structure
@@ -69,7 +69,7 @@ rainforest-devops/
 │   ├── main.tf
 │   ├── variables.tf
 │   ├── outputs.tf
-│   └── terraform.tfvars.local (create this)
+│   └── terraform.tfvars.example
 │
 ├── 2-runners/                 # Stage 2: GitHub runners
 │   ├── main.tf
@@ -77,10 +77,9 @@ rainforest-devops/
 │   └── terraform.tfvars
 │
 ├── modules/                   # Reusable Terraform modules
-│   ├── vault/
-│   ├── cert-manager/
-│   ├── actions-runner-controller/
-│   └── github-runners/
+│   ├── cert-manager/          # SSL certificate management
+│   ├── actions-runner-controller/  # Official GitHub ARC
+│   └── github-runners/        # Runner scale sets
 │
 ├── scripts/                   # Deployment automation
 └── README.md
@@ -89,120 +88,128 @@ rainforest-devops/
 ## ⚙️ Configuration
 
 ### Stage 1: Infrastructure
-Edit `1-infrastructure/terraform.tfvars.local`:
-```hcl
-github_token = "github_pat_your_token_here"
-vault_dev_token = "dev-root-token-change-me"  # Change for production
+Environment variable (recommended):
+```bash
+export TF_VAR_github_token="github_pat_your_token_here"
 ```
 
 ### Stage 2: Runners
 Edit `2-runners/terraform.tfvars`:
 ```hcl
 # Organization-level runners (recommended)
-github_organizations = ["your-org"]
+github_organizations = ["8am-tech"]
 
 # Or specific repositories
 github_repositories = [
-  "your-org/repo1",
-  "your-org/repo2"
+  "8am-tech/repo1",
+  "8am-tech/repo2"
 ]
 
 # Resource allocation
-runner_replicas = 5
+runner_replicas = 3
 runner_resources = {
   requests = { cpu = "500m", memory = "1Gi" }
   limits   = { cpu = "2000m", memory = "4Gi" }
 }
 
 # Labels for targeting
-runner_labels = ["self-hosted", "linux", "x64", "prod"]
+runner_labels = ["self-hosted", "linux", "x64"]
 ```
 
-## 🔧 Operations
+## 🛠️ Scripts & Operations
 
-### Monitor Deployments
+### Automated Scripts
+```bash
+# 🚀 Deploy everything
+./scripts/deploy.sh -t github_pat_xxx
+
+# 📊 Monitor deployment
+./scripts/monitor.sh status    # Overall status
+./scripts/monitor.sh runners   # Runner scale sets
+./scripts/monitor.sh logs      # ARC controller logs
+
+# 🧹 Clean up resources
+./scripts/cleanup.sh --force
+```
+
+### Manual Operations
+
+#### Monitor Deployments
 ```bash
 # Check infrastructure status
-kubectl get pods -n vault
 kubectl get pods -n cert-manager
 kubectl get pods -n actions-runner-system
 
 # Check runners
-kubectl get runnerdeployments -n github-runners
 kubectl get pods -n github-runners
+kubectl get runnerscalesets -A
 ```
 
-### View Runner Logs
+#### View Runner Logs
 ```bash
-kubectl logs -n actions-runner-system deployment/actions-runner-controller
-kubectl logs -n github-runners -l app=runner
+kubectl logs -n actions-runner-system deployment/arc-gha-rs-controller
+kubectl logs -n github-runners -l app.kubernetes.io/name=gha-runner-scale-set
 ```
 
-### Scale Runners
+#### Scale Runners
 ```bash
 cd 2-runners
 # Edit terraform.tfvars - change runner_replicas
 terraform apply
 ```
 
-### Access Vault UI (Development)
-```bash
-kubectl port-forward -n vault svc/vault 8200:8200
-# Open http://localhost:8200 (token: dev-root-token-change-me)
-```
-
 ## 🛡️ Security
 
-### Development vs Production
-
-**Development (current setup):**
-- Vault in dev mode (in-memory storage)
-- Simple authentication
-- Good for testing and personal use
-
-**Production recommendations:**
-- Use Vault in HA mode with persistent storage
-- Implement proper Vault unsealing
-- Use GitHub Apps instead of PATs
-- Enable audit logging
-- Set up proper RBAC
-
 ### Secret Management
-- GitHub PAT is stored securely in Vault
+- GitHub PAT stored securely in Kubernetes secrets
+- Environment variables for sensitive data during deployment
 - No plaintext secrets in Terraform files
-- Environment variables for sensitive data
-- `.local` files are git-ignored
+
+### Production Recommendations
+- Use GitHub Apps instead of PATs for better security and rate limits
+- Enable audit logging
+- Set up proper RBAC for runner pods
+- Use private container registry for runner images
+- Implement network policies
 
 ## 🚨 Troubleshooting
 
 ### Common Issues
 
-**1. CRD Not Found**
+**1. Runners Not Appearing in GitHub**
 ```bash
-# Check if ARC is deployed
-kubectl get crd runnerdeployments.actions.github.com
-# If missing, redeploy stage 1
+# Check runner scale set status
+kubectl get runnerscalesets -A
+kubectl describe runnerscaleset -n github-runners
+
+# Verify GitHub token permissions
+# Token needs: repo, admin:org scopes
 ```
 
-**2. Runners Not Registering**
+**2. Scale Set Controller Issues**
 ```bash
-# Check GitHub PAT permissions
-kubectl get secret -n actions-runner-system github-token-vault -o yaml
-# Verify PAT has admin:org and repo permissions
+# Check ARC controller logs
+kubectl logs -n actions-runner-system deployment/arc-gha-rs-controller
+
+# Verify controller is running
+kubectl get pods -n actions-runner-system
 ```
 
-**3. Vault Connection Issues**
-```bash
-# Check Vault status
-kubectl get pods -n vault
-kubectl port-forward -n vault svc/vault 8200:8200
-```
-
-**4. Resource Limits**
+**3. Resource Limits**
 ```bash
 # Check resource usage
 kubectl top pods -n github-runners
+
 # Adjust runner_resources in terraform.tfvars
+```
+
+**4. Helm Chart Issues**
+```bash
+# Check Helm releases
+helm list -A
+
+# If deployment fails, check values
+helm get values arc-runner-set-8am-tech -n github-runners
 ```
 
 ## 🔄 Updates and Maintenance
@@ -210,7 +217,7 @@ kubectl top pods -n github-runners
 ### Update ARC Version
 ```bash
 cd 1-infrastructure
-# Edit main.tf - update version in actions-runner-controller module
+# Edit modules/actions-runner-controller/main.tf - update version
 terraform plan
 terraform apply
 ```
@@ -222,30 +229,51 @@ cd 2-runners
 terraform apply
 ```
 
-### Backup State Files
+### Clean Deployment (if needed)
 ```bash
-# Both stages use local backend
-cp 1-infrastructure/infrastructure.tfstate backups/
-cp 2-runners/runners.tfstate backups/
+# Destroy runners first, then infrastructure
+cd 2-runners && terraform destroy
+cd ../1-infrastructure && terraform destroy
 ```
 
-## 📊 Monitoring
+## 📊 GitHub Integration
 
-### Key Metrics to Monitor
-- Runner pod status and resource usage
-- GitHub Actions queue length
-- Vault secret access patterns
-- Kubernetes cluster resource utilization
+### Verify Runners
+1. Go to your GitHub organization: `https://github.com/organizations/YOUR_ORG/settings/actions/runners`
+2. You should see self-hosted runners listed as "Idle"
+3. Runners will automatically start when workflows are queued
 
-### Recommended Tools
-- Prometheus + Grafana for metrics
-- ELK stack for log aggregation
-- GitHub Actions usage analytics
+### Using Runners in Workflows
+```yaml
+name: CI
+on: [push]
+jobs:
+  test:
+    runs-on: self-hosted  # Uses your ARC runners
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Running on self-hosted runner!"
+```
 
-## 🎯 Next Steps
+## 🎯 Architecture Notes
 
-1. **Production Hardening**: Move to HA Vault with persistent storage
-2. **CI/CD Integration**: Add pipeline for infrastructure updates  
-3. **Multi-cluster**: Extend to dev/staging/prod environments
-4. **Cost Optimization**: Implement spot instances for runners
-5. **Advanced Scaling**: Custom metrics for more intelligent autoscaling
+### Official GitHub ARC vs Legacy
+This setup uses the **official GitHub Actions Runner Controller** with:
+- RunnerScaleSets (new) instead of RunnerDeployments (legacy)
+- Direct GitHub API integration
+- Improved auto-scaling and efficiency
+- Better resource management
+
+### Two-Stage Benefits
+1. **Stage 1**: Deploys core infrastructure (cert-manager, ARC controller)
+2. **Stage 2**: Deploys runner scale sets that depend on Stage 1
+
+This prevents race conditions and allows independent updates.
+
+## 🚀 Next Steps
+
+1. **Multi-Organization**: Add more organizations to `github_organizations`
+2. **Advanced Scaling**: Configure custom scaling metrics
+3. **CI/CD Pipeline**: Automate infrastructure updates
+4. **Monitoring**: Add Prometheus/Grafana for runner metrics
+5. **GitHub Apps**: Migrate from PAT to GitHub App authentication

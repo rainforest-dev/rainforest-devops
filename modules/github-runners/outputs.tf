@@ -3,17 +3,12 @@ output "namespace" {
   value       = kubernetes_namespace.github_runners.metadata[0].name
 }
 
-output "repo_deployment_names" {
-  description = "Names of repository RunnerDeployment resources"
-  value       = [for k, v in kubernetes_manifest.repo_runner_deployment : v.manifest.metadata.name]
+output "repo_scale_set_names" {
+  description = "Names of repository RunnerScaleSet Helm releases"
+  value       = [for k, v in helm_release.repo_runner_scale_set : v.name]
 }
 
-output "org_deployment_names" {
-  description = "Names of organization RunnerDeployment resources" 
-  value       = [for k, v in kubernetes_manifest.org_runner_deployment : v.manifest.metadata.name]
-}
-
-output "autoscaler_enabled" {
-  description = "Whether horizontal autoscaler is enabled"
-  value       = var.runner_replicas > 1
+output "org_scale_set_names" {
+  description = "Names of organization RunnerScaleSet Helm releases" 
+  value       = [for k, v in helm_release.org_runner_scale_set : v.name]
 }

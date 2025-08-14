@@ -1,5 +1,10 @@
-# Copy this file to terraform.tfvars.local and update values
-# The .local file is git-ignored for security
+# GitHub Personal Access Token
+# Create at: https://github.com/settings/tokens (use classic tokens)
+# Required scopes: 
+#   - repo (Full control of private repositories)
+#   - admin:org (Full control of orgs and teams, read and write org projects)
 
-github_token = "your_github_pat_here"
-vault_dev_token = "dev-root-token-change-me"
+# IMPORTANT: Use environment variable instead of this file for security:
+# export TF_VAR_github_token="github_pat_your_token_here"
+
+github_token = "github_pat_your_token_here"

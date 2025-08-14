@@ -58,9 +58,8 @@ variable "namespace" {
   default     = "github-runners"
 }
 
-variable "vault_dev_token" {
-  description = "Vault development root token"
+variable "github_token" {
+  description = "GitHub Personal Access Token"
   type        = string
-  default     = "dev-root-token-change-me"
   sensitive   = true
 }

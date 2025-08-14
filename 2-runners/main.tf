@@ -7,9 +7,9 @@ terraform {
       version = "~> 2.23"
     }
     
-    vault = {
-      source  = "hashicorp/vault"
-      version = "~> 3.20"
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.11"
     }
   }
   
@@ -22,28 +22,17 @@ provider "kubernetes" {
   config_path = "~/.kube/config"
 }
 
-provider "vault" {
-  address = "http://vault.vault.svc.cluster.local:8200"
-  token   = var.vault_dev_token
-}
-
-# Verify infrastructure is ready
-data "kubernetes_namespace" "vault" {
-  metadata {
-    name = "vault"
+provider "helm" {
+  kubernetes {
+    config_path = "~/.kube/config"
   }
 }
 
+# Verify infrastructure is ready
 data "kubernetes_namespace" "arc" {
   metadata {
     name = "actions-runner-system"
   }
-}
-
-data "kubernetes_resources" "arc_crds" {
-  api_version    = "apiextensions.k8s.io/v1"
-  kind           = "CustomResourceDefinition"
-  field_selector = "metadata.name=runnerdeployments.actions.github.com"
 }
 
 module "github_runners" {
@@ -56,11 +45,10 @@ module "github_runners" {
   runner_resources = var.runner_resources
   runner_labels = var.runner_labels
   namespace = var.namespace
+  github_token = var.github_token
   
   # Ensure infrastructure is ready
   depends_on = [
-    data.kubernetes_namespace.vault,
-    data.kubernetes_namespace.arc,
-    data.kubernetes_resources.arc_crds
+    data.kubernetes_namespace.arc
   ]
 }
