@@ -1,0 +1,5 @@
+# Copy this file to terraform.tfvars.local and update values
+# The .local file is git-ignored for security
+
+github_token = "your_github_pat_here"
+vault_dev_token = "dev-root-token-change-me"
