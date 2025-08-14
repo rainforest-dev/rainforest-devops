@@ -8,6 +8,13 @@
 # Sensitive configuration files
 terraform.tfvars.local
 *.local
+**/terraform.tfvars.local
+**/*.local
+
+# Environment files that might contain secrets
+.env
+.env.local
+.env.*.local
 
 # IDE
 .vscode/
