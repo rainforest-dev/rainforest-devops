@@ -30,7 +30,25 @@ A production-ready, two-stage Terraform deployment for GitHub Actions self-hoste
 - GitHub Personal Access Token
 
 ### Step 1: Create GitHub PAT
-1. Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+
+#### Option A: Fine-grained Personal Access Token (Recommended)
+1. Go to GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens**
+2. Click **Generate new token**
+3. Configure:
+   - **Expiration**: Set appropriate expiration (90 days max)
+   - **Resource owner**: Select your organization
+   - **Repository access**: Choose "All repositories" or specific repos
+4. Grant **Repository permissions**:
+   - **Actions**: Read and write
+   - **Administration**: Read and write
+   - **Metadata**: Read
+   - **Pull requests**: Read
+5. Grant **Organization permissions** (if using organization runners):
+   - **Administration**: Read and write
+   - **Self-hosted runners**: Write
+
+#### Option B: Classic Personal Access Token
+1. Go to GitHub → Settings → Developer settings → Personal access tokens → **Tokens (classic)**
 2. Create token with scopes:
    - **repo** (Full control of private repositories)
    - **admin:org** (Full control of orgs and teams, read and write org projects)
