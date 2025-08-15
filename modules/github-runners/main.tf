@@ -33,8 +33,8 @@ resource "helm_release" "org_runner_scale_set" {
       githubConfigUrl    = "https://github.com/${each.value}"
       githubConfigSecret = "github-token"
       
-      minRunners = 1
-      maxRunners = var.runner_replicas * 2
+      minRunners = 0
+      maxRunners = var.runner_replicas
       
       runnerScaleSetName = "arc-runner-set-${each.value}"
       
@@ -79,8 +79,8 @@ resource "helm_release" "repo_runner_scale_set" {
       githubConfigUrl    = "https://github.com/${each.value}"
       githubConfigSecret = "github-token"
       
-      minRunners = 1
-      maxRunners = var.runner_replicas * 2
+      minRunners = 0
+      maxRunners = var.runner_replicas
       
       runnerScaleSetName = "arc-runner-set-${replace(each.value, "/", "-")}"
       
