@@ -10,7 +10,7 @@ github_organizations = [
 
 # Runner configuration
 runner_replicas = 5
-runner_image = "sumologic/github-action-runner:latest"
+runner_image = "ghcr.io/actions/actions-runner:latest"
 runner_labels = ["self-hosted", "linux", "x64", "prod"]
 
 # Resource allocation for production
